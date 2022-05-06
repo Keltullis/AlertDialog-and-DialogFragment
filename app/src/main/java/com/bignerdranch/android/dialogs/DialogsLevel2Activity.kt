@@ -1,36 +1,44 @@
 package com.bignerdranch.android.dialogs
 
-import android.content.DialogInterface
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.view.WindowManager
-import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import com.bignerdranch.android.dialogs.databinding.ActivityLevel2Binding
-import com.bignerdranch.android.dialogs.databinding.PartVolumeBinding
-import com.bignerdranch.android.dialogs.databinding.PartVolumeInputBinding
-import com.bignerdranch.android.dialogs.entities.AvailableVolumeValues
+import com.bignerdranch.android.dialogs.level2.CustomInputDialogFragment
+import com.bignerdranch.android.dialogs.level2.CustomInputDialogListener
+import com.bignerdranch.android.dialogs.level2.CustomDialogFragment
+import com.bignerdranch.android.dialogs.level2.CustomSingleChoiceDialogFragment
 import kotlin.properties.Delegates
 
 class DialogsLevel2Activity : AppCompatActivity() {
+
     private lateinit var binding: ActivityLevel2Binding
-    private var volume by Delegates.notNull<Int>()
+    private var firstVolume by Delegates.notNull<Int>()
+    private var secondVolume by Delegates.notNull<Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLevel2Binding.inflate(layoutInflater).also { setContentView(it.root) }
 
         binding.showCustomAlertDialogButton.setOnClickListener {
-            showCustomAlertDialog()
+            showCustomDialogFragment()
         }
         binding.showCustomSingleChoiceAlertDialogButton.setOnClickListener {
             showCustomSingleChoiceAlertDialog()
         }
         binding.showInputAlertDialogButton.setOnClickListener {
-            showCustomInputAlertDialog()
+            showCustomInputDialogFragment(KEY_FIRST_REQUEST_KEY, firstVolume)
+        }
+        binding.showInputAlertDialog2Button.setOnClickListener {
+            showCustomInputDialogFragment(KEY_SECOND_REQUEST_KEY, secondVolume)
         }
 
-        volume = savedInstanceState?.getInt(KEY_VOLUME) ?: 50
+        firstVolume = savedInstanceState?.getInt(KEY_VOLUME_FIRST) ?: 50
+        secondVolume = savedInstanceState?.getInt(KEY_VOLUME_SECOND) ?: 50
         updateUi()
+
+        setupCustomDialogFragmentListener()
+        setupCustomSingleChoiceDialogFragmentListener()
+        setupCustomInputDialogFragmentListeners()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -40,92 +48,67 @@ class DialogsLevel2Activity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putInt(KEY_VOLUME, volume)
+        outState.putInt(KEY_VOLUME_FIRST, firstVolume)
+        outState.putInt(KEY_VOLUME_SECOND, firstVolume)
     }
 
+    // -----
 
-    // Кастомный диалог принимает любые вьюшки
-    // делаем биндинг,изменяем прогрес,задаём .setView (вьюшку)
-
-    private fun showCustomAlertDialog() {
-        val dialogBinding = PartVolumeBinding.inflate(layoutInflater)
-        dialogBinding.volumeSeekBar.progress = volume
-        val dialog = AlertDialog.Builder(this)
-            .setCancelable(true)
-            .setTitle(R.string.volume_setup)
-            .setMessage(R.string.volume_setup_message)
-            .setView(dialogBinding.root)
-            .setPositiveButton(R.string.action_confirm) { _, _ ->
-                volume = dialogBinding.volumeSeekBar.progress
-                updateUi()
-            }
-            .create()
-        dialog.show()
+    private fun showCustomDialogFragment() {
+        CustomDialogFragment.show(supportFragmentManager, firstVolume)
     }
 
-    //вьюшка с адаптером
-    private fun showCustomSingleChoiceAlertDialog() {
-        val volumeItems = AvailableVolumeValues.createVolumeValues(volume)
-        val adapter = VolumeAdapter(volumeItems.values)
-
-        var volume = this.volume
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.volume_setup)
-            .setSingleChoiceItems(adapter, volumeItems.currentIndex) { _, which ->
-                volume = adapter.getItem(which)
-            }
-            .setPositiveButton(R.string.action_confirm) { _, _ ->
-                this.volume = volume
-                updateUi()
-            }
-            .create()
-        dialog.show()
-    }
-
-    //вместо сик бара тут текст инпут лаяут
-    private fun showCustomInputAlertDialog() {
-        val dialogBinding = PartVolumeInputBinding.inflate(layoutInflater)
-        dialogBinding.volumeInputEditText.setText(volume.toString())
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.volume_setup)
-            .setView(dialogBinding.root)
-            .setPositiveButton(R.string.action_confirm, null)
-            .create()
-        // как только диалог уже показан,ставим фокус на едит тексте
-        // вызываем getSystemService  как inputMethodManager ,вызываем метод post на вьюшке(это нужно для того что бы фокус работал)
-        // просто это работает не на всех мобилах
-        // берём число,проверям что оно есть,если всё окс,присваиваем новое значение и всё
-        // затем скрываем клавиатуру и диалог
-
-        dialog.setOnShowListener {
-            dialogBinding.volumeInputEditText.requestFocus()
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-                val enteredText = dialogBinding.volumeInputEditText.text.toString()
-                if (enteredText.isBlank()) {
-                    dialogBinding.volumeInputEditText.error = getString(R.string.empty_value)
-                    return@setOnClickListener
-                }
-                val volume = enteredText.toIntOrNull()
-                if (volume == null || volume > 100) {
-                    dialogBinding.volumeInputEditText.error = getString(R.string.invalid_value)
-                    return@setOnClickListener
-                }
-                this.volume = volume
-                updateUi()
-                dialog.dismiss()
-            }
+    private fun setupCustomDialogFragmentListener() {
+        CustomDialogFragment.setupListener(supportFragmentManager, this) {
+            this.firstVolume = it
+            updateUi()
         }
-        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
-        dialog.show()
     }
+
+    // -----
+
+    private fun showCustomSingleChoiceAlertDialog() {
+        CustomSingleChoiceDialogFragment.show(supportFragmentManager, firstVolume)
+    }
+
+    private fun setupCustomSingleChoiceDialogFragmentListener() {
+        CustomSingleChoiceDialogFragment.setupListener(supportFragmentManager, this) {
+            this.firstVolume = it
+            updateUi()
+        }
+    }
+
+    // -----
+
+    private fun showCustomInputDialogFragment(requestKey: String, volume: Int) {
+        CustomInputDialogFragment.show(supportFragmentManager, volume, requestKey)
+    }
+
+    private fun setupCustomInputDialogFragmentListeners() {
+        val listener: CustomInputDialogListener = { requestKey, volume ->
+            when (requestKey) {
+                KEY_FIRST_REQUEST_KEY -> this.firstVolume = volume
+                KEY_SECOND_REQUEST_KEY -> this.secondVolume = volume
+            }
+            updateUi()
+        }
+        CustomInputDialogFragment.setupListener(supportFragmentManager, this, KEY_FIRST_REQUEST_KEY, listener)
+        CustomInputDialogFragment.setupListener(supportFragmentManager, this, KEY_SECOND_REQUEST_KEY, listener)
+    }
+
+    // -----
 
     private fun updateUi() {
-        binding.currentVolumeTextView.text = getString(R.string.current_volume, volume)
+        binding.currentVolume1TextView.text = getString(R.string.current_volume_1, firstVolume)
+        binding.currentVolume2TextView.text = getString(R.string.current_volume_2, secondVolume)
     }
 
     companion object {
-        @JvmStatic private val TAG = DialogsLevel2Activity::class.java.simpleName
-        @JvmStatic private val KEY_VOLUME = "KEY_VOLUME"
+        @JvmStatic private val KEY_VOLUME_FIRST = "KEY_VOLUME_FIRST"
+        @JvmStatic private val KEY_VOLUME_SECOND = "KEY_VOLUME_SECOND"
+
+        @JvmStatic private val KEY_FIRST_REQUEST_KEY = "KEY_VOLUME_FIRST_REQUEST_KEY"
+        @JvmStatic private val KEY_SECOND_REQUEST_KEY = "KEY_VOLUME_SECOND_REQUEST_KEY"
     }
+
 }

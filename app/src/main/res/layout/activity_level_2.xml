@@ -38,17 +38,33 @@
             android:id="@+id/showInputAlertDialogButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
             android:text="@string/alert_dialog_input_and_validation"/>
+        <Button
+            android:id="@+id/showInputAlertDialog2Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/alert_dialog_input_and_validation_2"/>
 
         <TextView
-            android:id="@+id/currentVolumeTextView"
+            android:id="@+id/currentVolume1TextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textStyle="bold"
             android:fontFamily="casual"
             android:textSize="16sp"
             android:layout_marginTop="20dp"
-            tools:text="Current Volume: 50%"/>
+            tools:text="Current Volume 1: 50%"/>
+
+        <TextView
+            android:id="@+id/currentVolume2TextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:fontFamily="casual"
+            android:textSize="16sp"
+            android:layout_marginTop="20dp"
+            tools:text="Current Volume 2: 50%"/>
 
     </LinearLayout>
 

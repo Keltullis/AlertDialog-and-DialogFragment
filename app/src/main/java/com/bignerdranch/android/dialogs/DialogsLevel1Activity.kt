@@ -4,49 +4,52 @@ import android.content.DialogInterface
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
-import androidx.annotation.StringRes
-import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.FragmentResultListener
 import com.bignerdranch.android.dialogs.databinding.ActivityLevel1Binding
-import com.bignerdranch.android.dialogs.entities.AvailableVolumeValues
+import com.bignerdranch.android.dialogs.level1.*
 import kotlin.properties.Delegates.notNull
 
 class DialogsLevel1Activity : AppCompatActivity() {
+
     private lateinit var binding: ActivityLevel1Binding
     private var volume by notNull<Int>()
     private var color by notNull<Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityLevel1Binding.inflate(layoutInflater).also {
-            setContentView(it.root)
-        }
+        binding = ActivityLevel1Binding.inflate(layoutInflater).also { setContentView(it.root) }
 
         binding.showDefaultAlertDialogButton.setOnClickListener {
-            showAlertDialog()
+            showSimpleDialogFragment()
         }
 
         binding.showSingleChoiceAlertDialogButton.setOnClickListener {
-            showSingleChoiceAlertDialog()
+            showSingleChoiceDialogFragment()
         }
 
         binding.showSingleChoiceWithConfirmationAlertDialogButton.setOnClickListener {
-            showSingleChoiceWithConfirmationAlertDialog()
+            showSingleChoiceWithConfirmationDialogFragment()
         }
 
         binding.showMultipleChoiceAlertDialogButton.setOnClickListener {
-            showMultipleChoiceAlertDialog()
+            showMultipleChoiceDialogFragment()
         }
 
         binding.showMultipleChoiceWithConfirmationAlertDialogButton.setOnClickListener {
-            showMultipleChoiceWithConfirmationAlertDialog()
+            showMultipleChoiceWithConfirmationDialogFragment()
         }
 
         volume = savedInstanceState?.getInt(KEY_VOLUME) ?: 50
         color = savedInstanceState?.getInt(KEY_COLOR) ?: Color.RED
-
         updateUi()
+
+        // Запускаем слушатели
+
+        setupSimpleDialogFragmentListener()
+        setupSingleChoiceDialogFragmentListener()
+        setupSingleChoiceWithConfirmationDialogFragmentListener()
+        setupMultipleChoiceDialogFragmentListener()
+        setupMultipleChoiceWithConfirmationDialogFragmentListener()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -60,10 +63,21 @@ class DialogsLevel1Activity : AppCompatActivity() {
         outState.putInt(KEY_COLOR, color)
     }
 
-    // 2 аргумента: сам диалог и which
-    // проверяем какая кнопка была нажата и действуем
-    private fun showAlertDialog() {
-        val listener = DialogInterface.OnClickListener { _, which ->
+
+
+    // -----
+    // Теперь на каждый диалог нужно 2 метода
+    // показать диалог и слушать результат
+    private fun showSimpleDialogFragment() {
+        val dialogFragment = SimpleDialogFragment()
+        dialogFragment.show(supportFragmentManager, SimpleDialogFragment.TAG)
+    }
+
+    // Слушаем данные по ключу,в слушателе первйы аргумент этот тот же самый реквест ключ и отправленный результат
+    // вытягиваем индекс кнопки которую отправили и реагируем
+    private fun setupSimpleDialogFragmentListener() {
+        supportFragmentManager.setFragmentResultListener(SimpleDialogFragment.REQUEST_KEY, this, FragmentResultListener { _, result ->
+            val which = result.getInt(SimpleDialogFragment.KEY_RESPONSE)
             when (which) {
                 DialogInterface.BUTTON_POSITIVE -> showToast(R.string.uninstall_confirmed)
                 DialogInterface.BUTTON_NEGATIVE -> showToast(R.string.uninstall_rejected)
@@ -71,161 +85,63 @@ class DialogsLevel1Activity : AppCompatActivity() {
                     showToast(R.string.uninstall_ignored)
                 }
             }
+        })
+    }
+
+
+    // -----
+    // Логику показа диалога и получения результатов можно вынести в сам DialogFragment в компаньён
+    private fun showSingleChoiceDialogFragment() {
+        SingleChoiceDialogFragment.show(supportFragmentManager, volume)
+    }
+
+    private fun setupSingleChoiceDialogFragmentListener() {
+        SingleChoiceDialogFragment.setupListener(supportFragmentManager, this) {
+            this.volume = it
+            updateUi()
         }
-
-        // val dialog = AlertDialog.Builder(this)
-        //            .setCancelable(false)
-        //            .setIcon(R.drawable.ic_baseline_local_fire_department_24)
-        //            .setTitle(R.string.default_alert_title)
-        //            .setMessage(R.string.default_alert_message)
-        //            .setPositiveButton(R.string.action_yes, listener)
-        //            .setNegativeButton(R.string.action_no, listener)
-        //            .setNeutralButton(R.string.action_ignore, listener)
-        //            .create()
-        //        dialog.show()
-
-        // Создание и запуск диалога,тут всё очень просто
-        // используем билдер,задаём возможность отменить диалог
-        // задаём иклнку,заголовок,сообщение и слушатели на кнопки
-        // в итоге нужно создать и показать
-
-        val dialog = AlertDialog.Builder(this)
-            .setCancelable(true)
-            .setIcon(R.drawable.ic_baseline_local_fire_department_24)
-            .setTitle(R.string.default_alert_title)
-            .setMessage(R.string.default_alert_message)
-            .setPositiveButton(R.string.action_yes, listener)
-            .setNegativeButton(R.string.action_no, listener)
-            .setNeutralButton(R.string.action_ignore, listener)
-            .setOnCancelListener {
-                showToast(R.string.dialog_cancelled)
-            }
-            .setOnDismissListener {
-                Log.d(TAG, "Dialog dismissed")
-            }
-            .create()
-
-        dialog.show()
-    }
-
-    //.setOnDismissListener срабатывает всегда при закрытии диалога
-    //.setOnCancelListener срабатывает только на отмену диалога(кнопка назад)
-
-    private fun showToast(@StringRes messageRes: Int) {
-        Toast.makeText(this, messageRes, Toast.LENGTH_SHORT).show()
-    }
-
-    // ---------
-    // формируем список,конвертируем в массив строк
-    // в билдере указываем .setSingleChoiceItems,передаём массив строк и текущую выбранную позицию
-    // меняем значение позиции по индексу (which),обновляем текствью
-    // закрываем диалог dialog.dismiss()
-
-    private fun showSingleChoiceAlertDialog() {
-        val volumeItems = AvailableVolumeValues.createVolumeValues(volume)
-        val volumeTextItems = volumeItems.values
-            .map { getString(R.string.volume_description, it) }
-            .toTypedArray()
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.volume_setup)
-            .setSingleChoiceItems(volumeTextItems, volumeItems.currentIndex) { dialog, which ->
-                volume = volumeItems.values[which]
-                updateUi()
-                dialog.dismiss()
-            }
-            .create()
-        dialog.show()
-    }
-
-    // ----------
-    // тоже самое но с подстверждением
-    // диалог приводим к AlertDialog,в нём получаем листвью и находим индекс выбранного элемента
-    // по индексу вытаскиваем элемент и обновляем
-
-    private fun showSingleChoiceWithConfirmationAlertDialog() {
-        val volumeItems = AvailableVolumeValues.createVolumeValues(volume)
-        val volumeTextItems = volumeItems.values
-            .map { getString(R.string.volume_description, it) }
-            .toTypedArray()
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.volume_setup)
-            .setSingleChoiceItems(volumeTextItems, volumeItems.currentIndex, null)
-            .setPositiveButton(R.string.action_confirm) { dialog, _ ->
-                val index = (dialog as AlertDialog).listView.checkedItemPosition
-                volume = volumeItems.values[index]
-                updateUi()
-            }
-            .create()
-        dialog.show()
-    }
-
-    // -------
-
-    // setMultiChoiceItems принимает сами элементы,выбранные элементы(массив булеан) и слушатель нажатий
-    // цвет(по умолчанию красный),вытягиваем 3 цвета,если хоть 1 компонент больше 0(значит он выбран),мы говорим что это true и делаем массив
-    //
-
-    private fun showMultipleChoiceAlertDialog() {
-        val colorItems = resources.getStringArray(R.array.colors)
-        val colorComponents = mutableListOf(
-            Color.red(this.color),
-            Color.green(this.color),
-            Color.blue(this.color)
-        )
-        val checkboxes = colorComponents
-            .map { it > 0 }
-            .toBooleanArray()
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.volume_setup)
-            .setMultiChoiceItems(colorItems, checkboxes) { _, which, isChecked ->
-                colorComponents[which] = if (isChecked) 255 else 0
-                this.color = Color.rgb(
-                    colorComponents[0],
-                    colorComponents[1],
-                    colorComponents[2]
-                )
-                updateUi()
-            }
-            .setPositiveButton(R.string.action_close, null)
-            .create()
-        dialog.show()
     }
 
     // -----
-    // цвет будет подтверждён только тогда когда нажмут конфёрм
 
-    private fun showMultipleChoiceWithConfirmationAlertDialog() {
-        val colorItems = resources.getStringArray(R.array.colors)
-        val colorComponents = mutableListOf(
-            Color.red(this.color),
-            Color.green(this.color),
-            Color.blue(this.color)
-        )
-        val checkboxes = colorComponents
-            .map { it > 0 }
-            .toBooleanArray()
-
-        var color: Int = this.color
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.volume_setup)
-            .setMultiChoiceItems(colorItems, checkboxes) { _, which, isChecked ->
-                colorComponents[which] = if (isChecked) 255 else 0
-                color = Color.rgb(
-                    colorComponents[0],
-                    colorComponents[1],
-                    colorComponents[2]
-                )
-            }
-            .setPositiveButton(R.string.action_confirm) { _, _ ->
-                this.color = color
-                updateUi()
-            }
-            .create()
-        dialog.show()
+    private fun showSingleChoiceWithConfirmationDialogFragment() {
+        SingleChoiceWithConfirmationDialogFragment.show(supportFragmentManager, volume)
     }
+
+    private fun setupSingleChoiceWithConfirmationDialogFragmentListener() {
+        SingleChoiceWithConfirmationDialogFragment.setupListener(supportFragmentManager, this) {
+            this.volume = it
+            updateUi()
+        }
+    }
+
+    // -----
+
+    private fun showMultipleChoiceDialogFragment() {
+        MultipleChoiceDialogFragment.show(supportFragmentManager, this.color)
+    }
+
+    private fun setupMultipleChoiceDialogFragmentListener() {
+        MultipleChoiceDialogFragment.setupListener(supportFragmentManager, this) {
+            this.color = it
+            updateUi()
+        }
+    }
+
+    // -----
+
+    private fun showMultipleChoiceWithConfirmationDialogFragment() {
+        MultipleChoiceWithConfirmationDialogFragment.show(supportFragmentManager, this.color)
+    }
+
+    private fun setupMultipleChoiceWithConfirmationDialogFragmentListener() {
+        MultipleChoiceWithConfirmationDialogFragment.setupListener(supportFragmentManager, this) {
+            this.color = it
+            updateUi()
+        }
+    }
+
+    // -----
 
     private fun updateUi() {
         binding.currentVolumeTextView.text = getString(R.string.current_volume, volume)
